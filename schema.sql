@@ -1,3 +1,4 @@
+DROP TYPE IF EXISTS campaign_send_status CASCADE; CREATE TYPE campaign_send_status AS ENUM ('pending', 'sending', 'sent', 'failed');
 DROP TYPE IF EXISTS list_type CASCADE; CREATE TYPE list_type AS ENUM ('public', 'private', 'temporary');
 DROP TYPE IF EXISTS list_optin CASCADE; CREATE TYPE list_optin AS ENUM ('single', 'double');
 DROP TYPE IF EXISTS subscriber_status CASCADE; CREATE TYPE subscriber_status AS ENUM ('enabled', 'disabled', 'blocklisted');
@@ -25,6 +26,23 @@ DROP INDEX IF EXISTS idx_subs_email; CREATE UNIQUE INDEX idx_subs_email ON subsc
 DROP INDEX IF EXISTS idx_subs_status; CREATE INDEX idx_subs_status ON subscribers(status);
 DROP INDEX IF EXISTS idx_subs_created_at; CREATE INDEX idx_subs_created_at ON subscribers(created_at);
 DROP INDEX IF EXISTS idx_subs_updated_at; CREATE INDEX idx_subs_updated_at ON subscribers(updated_at);
+
+-- segments
+DROP TABLE IF EXISTS segments CASCADE;
+CREATE TABLE segments (
+    id              SERIAL PRIMARY KEY,
+    uuid            uuid NOT NULL UNIQUE,
+    name            TEXT NOT NULL,
+    segment_query   TEXT NOT NULL,
+    description     TEXT NOT NULL DEFAULT '',
+
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+DROP INDEX IF EXISTS idx_segments_name; CREATE INDEX idx_segments_name ON lists(name);
+DROP INDEX IF EXISTS idx_segments_created_at; CREATE INDEX idx_segments_created_at ON segments(created_at);
+DROP INDEX IF EXISTS idx_segments_updated_at; CREATE INDEX idx_segments_updated_at ON segments(updated_at);
+
 
 -- lists
 DROP TABLE IF EXISTS lists CASCADE;
@@ -124,6 +142,19 @@ DROP INDEX IF EXISTS idx_camps_name; CREATE INDEX idx_camps_name ON campaigns(na
 DROP INDEX IF EXISTS idx_camps_created_at; CREATE INDEX idx_camps_created_at ON campaigns(created_at);
 DROP INDEX IF EXISTS idx_camps_updated_at; CREATE INDEX idx_camps_updated_at ON campaigns(updated_at);
 
+DROP TABLE IF EXISTS campaign_segments CASCADE;
+CREATE TABLE campaign_segments (
+    id           BIGSERIAL PRIMARY KEY,
+    campaign_id  INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
+
+    -- Lists may be deleted, so list_id is nullable
+    -- and a copy of the original list name is maintained here.
+    segment_id      INTEGER NULL REFERENCES segments(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    segment_name    TEXT NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX ON campaign_segments (campaign_id, segment_id);
+DROP INDEX IF EXISTS idx_camp_segments_camp_id; CREATE INDEX idx_camp_segments_camp_id ON campaign_segments(campaign_id);
+DROP INDEX IF EXISTS idx_camp_segments_segment_id; CREATE INDEX idx_camp_segments_segment_id ON campaign_segments(segment_id);
 
 DROP TABLE IF EXISTS campaign_lists CASCADE;
 CREATE TABLE campaign_lists (
@@ -138,6 +169,20 @@ CREATE TABLE campaign_lists (
 CREATE UNIQUE INDEX ON campaign_lists (campaign_id, list_id);
 DROP INDEX IF EXISTS idx_camp_lists_camp_id; CREATE INDEX idx_camp_lists_camp_id ON campaign_lists(campaign_id);
 DROP INDEX IF EXISTS idx_camp_lists_list_id; CREATE INDEX idx_camp_lists_list_id ON campaign_lists(list_id);
+
+DROP TABLE IF EXISTS campaign_sends CASCADE;
+CREATE TABLE campaign_sends (
+    id               BIGSERIAL PRIMARY KEY,
+    campaign_id      INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
+
+    -- Subscribers may be deleted, but the view counts should remain.
+    subscriber_id    INTEGER NULL REFERENCES subscribers(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    send_status      campaign_send_status NOT NULL DEFAULT 'pending',
+    created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+DROP INDEX IF EXISTS idx_sends_camp_id_status; CREATE INDEX idx_sends_camp_id_status ON campaign_sends(campaign_id, send_status);
+DROP INDEX IF EXISTS idx_sends_subscriber_id; CREATE INDEX idx_sends_subscriber_id ON campaign_sends(subscriber_id);
+DROP INDEX IF EXISTS idx_sends_date; CREATE INDEX idx_sends_date ON campaign_sends((TIMEZONE('UTC', created_at)::DATE));
 
 DROP TABLE IF EXISTS campaign_views CASCADE;
 CREATE TABLE campaign_views (

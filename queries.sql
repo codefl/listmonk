@@ -465,6 +465,43 @@ UPDATE lists SET updated_at=NOW() WHERE id = ANY($1);
 DELETE FROM lists WHERE id = ALL($1);
 
 
+-- segments
+-- name: get-segments
+SELECT * FROM segments 
+    ORDER BY CASE WHEN $1 = 'id' THEN id END, CASE WHEN $1 = 'name' THEN name END;
+
+-- name: query-segments
+WITH ls AS (
+	SELECT COUNT(*) OVER () AS total, segments.* FROM segments WHERE
+    CASE
+        WHEN $1 > 0 THEN id = $1
+        WHEN $2 != '' THEN uuid = $2::UUID
+        WHEN $3 != '' THEN to_tsvector(name) @@ to_tsquery ($3)
+        ELSE TRUE
+    END
+    OFFSET $4 LIMIT (CASE WHEN $5 < 1 THEN NULL ELSE $5 END)
+)
+SELECT ls.*
+    FROM ls ORDER BY %order%;
+
+-- name: create-segment
+INSERT INTO segments (uuid, name, segment_query, description) VALUES($1, $2, $3, $4) RETURNING id;
+
+-- name: update-segment
+UPDATE segments SET
+    name=(CASE WHEN $2 != '' THEN $2 ELSE name END),
+    segment_query=(CASE WHEN $3 != '' THEN $3 ELSE segment_query END),
+    description=(CASE WHEN $4 != '' THEN $4 ELSE description END),
+    updated_at=NOW()
+WHERE id = $1;
+
+-- name: update-segments-date
+UPDATE segments SET updated_at=NOW() WHERE id = ANY($1);
+
+-- name: delete-segments
+DELETE FROM segments WHERE id = ALL($1);
+
+
 -- campaigns
 -- name: create-campaign
 -- This creates the campaign and inserts campaign_lists relationships.

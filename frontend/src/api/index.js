@@ -153,6 +153,46 @@ export const deleteList = (id) => http.delete(
   { loading: models.lists },
 );
 
+// Segments.
+export const getSegments = (params) => http.get(
+  '/api/segments',
+  {
+    params: (!params ? { per_page: 'all' } : params),
+    loading: models.segments,
+    store: models.segments,
+  },
+);
+
+export const querySegments = (params) => http.get(
+  '/api/segments',
+  {
+    params: (!params ? { per_page: 'all' } : params),
+    loading: models.segments,
+  },
+);
+
+export const getSegment = async (id) => http.get(
+  `/api/segments/${id}`,
+  { loading: models.segments },
+);
+
+export const createSegment = (data) => http.post(
+  '/api/segments',
+  data,
+  { loading: models.segments },
+);
+
+export const updateSegment = (data) => http.put(
+  `/api/segments/${data.id}`,
+  data,
+  { loading: models.segments },
+);
+
+export const deleteSegment = (id) => http.delete(
+  `/api/segments/${id}`,
+  { loading: models.segments },
+);
+
 // Subscribers.
 export const getSubscribers = async (params) => http.get(
   '/api/subscribers',

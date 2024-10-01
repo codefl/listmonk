@@ -56,6 +56,13 @@ type Queries struct {
 	UpdateListsDate *sqlx.Stmt `query:"update-lists-date"`
 	DeleteLists     *sqlx.Stmt `query:"delete-lists"`
 
+	CreateSegment      *sqlx.Stmt `query:"create-segment"`
+	QuerySegments      string     `query:"query-segments"`
+	GetSegments        *sqlx.Stmt `query:"get-segments"`
+	UpdateSegment      *sqlx.Stmt `query:"update-segment"`
+	UpdateSegmentsDate *sqlx.Stmt `query:"update-segments-date"`
+	DeleteSegments     *sqlx.Stmt `query:"delete-segments"`
+
 	CreateCampaign        *sqlx.Stmt `query:"create-campaign"`
 	QueryCampaigns        string     `query:"query-campaigns"`
 	GetCampaign           *sqlx.Stmt `query:"get-campaign"`

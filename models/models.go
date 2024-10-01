@@ -232,6 +232,20 @@ type List struct {
 	Total int `db:"total" json:"-"`
 }
 
+// Segment represents a segment of a mailing list.
+type Segment struct {
+	Base
+
+	UUID         string `db:"uuid" json:"uuid"`
+	Name         string `db:"name" json:"name"`
+	SegmentQuery string `db:"segment_query" json:"segment_query"`
+	Description  string `db:"description" json:"description"`
+
+	// Pseudofield for getting the total number of segments
+	// in searches and queries.
+	Total int `db:"total" json:"-"`
+}
+
 // Campaign represents an e-mail campaign.
 type Campaign struct {
 	Base

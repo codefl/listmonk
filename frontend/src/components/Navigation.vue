@@ -12,6 +12,13 @@
         icon="newspaper-variant-outline" :label="$t('menu.forms')" />
     </b-menu-item><!-- lists -->
 
+    <b-menu-item :expanded="activeGroup.segments" :active="activeGroup.segments" data-cy="segments"
+      @update:active="(state) => toggleGroup('segments', state)" icon="format-list-bulleted-square"
+      :label="$t('globals.terms.segments')">
+      <b-menu-item :to="{ name: 'segments' }" tag="router-link" :active="activeItem.lists" data-cy="all-segments"
+        icon="format-list-bulleted-square" :label="$t('menu.allSegments')" />
+    </b-menu-item><!-- segments -->
+
     <b-menu-item :expanded="activeGroup.subscribers" :active="activeGroup.subscribers" data-cy="subscribers"
       @update:active="(state) => toggleGroup('subscribers', state)" icon="account-multiple"
       :label="$t('globals.terms.subscribers')">
