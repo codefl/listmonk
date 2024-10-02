@@ -658,7 +658,7 @@ export default Vue.extend({
     },
     selectedSegments() {
       this.form.segments = this.selectedSegments;
-    }
+    },
   },
 
   mounted() {

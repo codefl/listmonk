@@ -133,6 +133,7 @@ func initHTTPHandlers(e *echo.Echo, app *App) {
 	g.GET("/api/segments/:id", handleGetSegments)
 	g.POST("/api/segments", handleCreateSegment)
 	g.PUT("/api/segments/:id", handleUpdateSegment)
+	g.POST("/api/segments/count", handleCountSubscribersByQuery)
 	g.DELETE("/api/segments/:id", handleDeleteSegments)
 
 	g.GET("/api/campaigns", handleGetCampaigns)

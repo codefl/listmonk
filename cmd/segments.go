@@ -157,3 +157,25 @@ func handleDeleteSegments(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, okResp{true})
 }
+
+// handleCountSubscribersByQuery handles validate and count subscribers in segment.
+func handleCountSubscribersByQuery(c echo.Context) error {
+	var (
+		app = c.Get("app").(*App)
+	)
+
+	// Incoming params.
+	var l models.Segment
+	if err := c.Bind(&l); err != nil {
+		return err
+	}
+
+	out, err := app.core.CountSubscribersByQuery(l.SegmentQuery)
+	if err != nil {
+		return err
+	}
+
+	resp := map[string]interface{}{}
+	resp["total"] = out
+	return c.JSON(http.StatusOK, okResp{resp})
+}

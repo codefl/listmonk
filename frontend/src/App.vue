@@ -163,7 +163,7 @@ export default Vue.extend({
     // and have them in the store.
     await this.$api.getLists({ minimal: true, per_page: 'all' });
     await this.$api.getSegments({ minimal: true, per_page: 'all' });
-    
+
     window.addEventListener('resize', () => {
       this.windowWidth = window.innerWidth;
     });

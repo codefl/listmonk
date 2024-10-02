@@ -501,6 +501,9 @@ UPDATE segments SET updated_at=NOW() WHERE id = ANY($1);
 -- name: delete-segments
 DELETE FROM segments WHERE id = ALL($1);
 
+-- name: count-subscribers-by-query
+-- raw: true
+SELECT COUNT(*) AS total FROM subscribers %s;
 
 -- campaigns
 -- name: create-campaign

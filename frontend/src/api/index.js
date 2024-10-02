@@ -188,6 +188,11 @@ export const updateSegment = (data) => http.put(
   { loading: models.segments },
 );
 
+export const countSubscribersInSegment = (data) => http.post(
+  '/api/segments/count',
+  data,
+);
+
 export const deleteSegment = (id) => http.delete(
   `/api/segments/${id}`,
   { loading: models.segments },

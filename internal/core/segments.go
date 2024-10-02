@@ -1,6 +1,9 @@
 package core
 
 import (
+	"context"
+	"database/sql"
+	"fmt"
 	"net/http"
 
 	"github.com/gofrs/uuid/v5"
@@ -91,7 +94,6 @@ func (c *Core) CreateSegment(l models.Segment) (models.Segment, error) {
 
 // UpdateSegment updates a given segment.
 func (c *Core) UpdateSegment(id int, l models.Segment) (models.Segment, error) {
-	c.log.Printf("Updatinhg segment: %v", l)
 	res, err := c.q.UpdateSegment.Exec(id, l.Name, l.SegmentQuery, l.Description)
 	if err != nil {
 		c.log.Printf("error updating segment: %v", err)
@@ -120,4 +122,34 @@ func (c *Core) DeleteSegments(ids []int) error {
 			c.i18n.Ts("globals.messages.errorDeleting", "name", "{globals.terms.segment}", "error", pqErrMsg(err)))
 	}
 	return nil
+}
+
+// CountSubscribersInSegment count subscribers using segment query
+func (c *Core) CountSubscribersByQuery(query string) (int, error) {
+	// If there's no condition, it's a "get all" call which can probably be optionally pulled from cache.
+	cond := query
+	if query != "" {
+		cond = fmt.Sprintf(" WHERE %s", query)
+	}
+	c.log.Printf(cond)
+
+	// Create a readonly transaction that just does COUNT() to obtain the count of results
+	// and to ensure that the arbitrary query is indeed readonly.
+	stmt := fmt.Sprintf(c.q.CountSubscribersByQuery, cond)
+
+	tx, err := c.db.BeginTxx(context.Background(), &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		c.log.Printf("error preparing subscriber query: %v", err)
+		return 0, echo.NewHTTPError(http.StatusBadRequest, c.i18n.Ts("subscribers.errorPreparingQuery", "error", pqErrMsg(err)))
+	}
+	defer tx.Rollback()
+
+	// Execute the readonly query and get the count of results.
+	total := 0
+	if err := tx.Get(&total, stmt); err != nil {
+		return 0, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorFetching", "name", "{globals.terms.subscribers}", "error", pqErrMsg(err)))
+	}
+
+	return total, nil
 }

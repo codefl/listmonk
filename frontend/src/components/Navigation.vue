@@ -18,7 +18,7 @@
       <b-menu-item :to="{ name: 'subscribers' }" tag="router-link" :active="activeItem.subscribers"
         data-cy="all-subscribers" icon="account-multiple" :label="$t('menu.allSubscribers')" />
       <b-menu-item :to="{ name: 'segments' }" tag="router-link" :active="activeItem.segments" data-cy="segments"
-        icon="format-list-bulleted-square" :label="$t('menu.allSegments')" />
+        icon="format-list-bulleted-square" :label="$t('menu.segments')" />
       <b-menu-item :to="{ name: 'import' }" tag="router-link" :active="activeItem.import" data-cy="import"
         icon="file-upload-outline" :label="$t('menu.import')" />
       <b-menu-item :to="{ name: 'bounces' }" tag="router-link" :active="activeItem.bounces" data-cy="bounces"

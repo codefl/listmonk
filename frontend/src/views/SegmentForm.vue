@@ -22,8 +22,7 @@
         <b-field :label="$t('segments.criteria')" label-position="on-border">
           <b-input :maxlength="2000" v-model="form.segmentQuery" name="segmentQuery" type="textarea"
             placeholder="subscribers.name LIKE '%user%' or subscribers.status='blocklisted'" />
-        </b-field>
-
+          </b-field>
         <b-field :label="$t('globals.fields.description')" label-position="on-border">
           <b-input :maxlength="2000" v-model="form.description" name="description" type="textarea"
             :placeholder="$t('globals.fields.description')" />
@@ -32,6 +31,9 @@
       <footer class="modal-card-foot has-text-right">
         <b-button @click="$parent.close()">
           {{ $t('globals.buttons.close') }}
+        </b-button>
+        <b-button @click="countSegment()" type="is-primary" :loading="loading.segments" data-cy="btn-count">
+          {{ $t('segments.buttons.count') }}
         </b-button>
         <b-button native-type="submit" type="is-primary" :loading="loading.segments" data-cy="btn-save">
           {{ $t('globals.buttons.save') }}
@@ -101,6 +103,12 @@ export default Vue.extend({
         this.$emit('finished');
         this.$parent.close();
         this.$utils.toast(this.$t('globals.messages.updated', { name: data.name }));
+      });
+    },
+
+    countSegment() {
+      this.$api.countSubscribersInSegment({ segment_query: this.form.segmentQuery }).then((data) => {
+        this.$utils.confirm(`Total subscribers in this segment is [${data.total}]`)
       });
     },
   },
