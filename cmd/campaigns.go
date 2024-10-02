@@ -33,6 +33,8 @@ type campaignReq struct {
 	// to the outside world.
 	ListIDs []int `json:"lists"`
 
+	SegmentIDs []int `json:"segments"`
+
 	MediaIDs []int `json:"media"`
 
 	// This is only relevant to campaign test requests.
@@ -225,7 +227,7 @@ func handleCreateCampaign(c echo.Context) error {
 		o.ArchiveTemplateID = o.TemplateID
 	}
 
-	out, err := app.core.CreateCampaign(o.Campaign, o.ListIDs, o.MediaIDs)
+	out, err := app.core.CreateCampaign(o.Campaign, o.ListIDs, o.SegmentIDs, o.MediaIDs)
 	if err != nil {
 		return err
 	}
@@ -269,7 +271,7 @@ func handleUpdateCampaign(c echo.Context) error {
 		o = c
 	}
 
-	out, err := app.core.UpdateCampaign(id, o.Campaign, o.ListIDs, o.MediaIDs, o.SendLater)
+	out, err := app.core.UpdateCampaign(id, o.Campaign, o.ListIDs, o.SegmentIDs, o.MediaIDs, o.SendLater)
 	if err != nil {
 		return err
 	}

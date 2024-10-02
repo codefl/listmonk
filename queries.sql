@@ -471,7 +471,7 @@ SELECT * FROM segments
     ORDER BY CASE WHEN $1 = 'id' THEN id END, CASE WHEN $1 = 'name' THEN name END;
 
 -- name: query-segments
-WITH ls AS (
+WITH seg AS (
 	SELECT COUNT(*) OVER () AS total, segments.* FROM segments WHERE
     CASE
         WHEN $1 > 0 THEN id = $1
@@ -481,8 +481,8 @@ WITH ls AS (
     END
     OFFSET $4 LIMIT (CASE WHEN $5 < 1 THEN NULL ELSE $5 END)
 )
-SELECT ls.*
-    FROM ls ORDER BY %order%;
+SELECT seg.*
+    FROM seg ORDER BY %order%;
 
 -- name: create-segment
 INSERT INTO segments (uuid, name, segment_query, description) VALUES($1, $2, $3, $4) RETURNING id;
@@ -542,6 +542,10 @@ camp AS (
 med AS (
     INSERT INTO campaign_media (campaign_id, media_id, filename)
         (SELECT (SELECT id FROM camp), id, filename FROM media WHERE id=ANY($19::INT[]))
+),
+seg AS (
+    INSERT INTO campaign_segments (campaign_id, segment_id, segment_name)
+        (SELECT (SELECT id FROM camp), id, name FROM segments WHERE id=ANY($20::INT[]))
 )
 INSERT INTO campaign_lists (campaign_id, list_id, list_name)
     (SELECT (SELECT id FROM camp), id, name FROM lists WHERE id=ANY($14::INT[]))
@@ -563,10 +567,17 @@ SELECT  c.id, c.uuid, c.name, c.subject, c.from_email,
         (
             SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(l)), '[]') FROM (
                 SELECT COALESCE(campaign_lists.list_id, 0) AS id,
-                campaign_lists.list_name AS name
+                    campaign_lists.list_name AS name
                 FROM campaign_lists WHERE campaign_lists.campaign_id = c.id
-        ) l
-    ) AS lists
+            ) l
+        ) AS lists,
+        (
+            SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(s)), '[]') FROM (
+                SELECT COALESCE(campaign_segments.segment_id, 0) AS id,
+                    campaign_segments.segment_name AS name
+                FROM campaign_segments WHERE campaign_segments.campaign_id = c.id
+            ) s
+        ) AS segments
 FROM campaigns c
 WHERE ($1 = 0 OR id = $1)
     AND (CARDINALITY($2::campaign_status[]) = 0 OR status = ANY($2))
@@ -608,6 +619,10 @@ WITH lists AS (
     SELECT campaign_id, JSON_AGG(JSON_BUILD_OBJECT('id', list_id, 'name', list_name)) AS lists FROM campaign_lists
     WHERE campaign_id = ANY($1) GROUP BY campaign_id
 ),
+segments AS (
+    SELECT campaign_id, JSON_AGG(JSON_BUILD_OBJECT('id', segment_id, 'name', segment_name)) AS segments FROM campaign_segments
+    WHERE campaign_id = ANY($1) GROUP BY campaign_id
+),
 media AS (
     SELECT campaign_id, JSON_AGG(JSON_BUILD_OBJECT('id', media_id, 'filename', filename)) AS media FROM campaign_media
     WHERE campaign_id = ANY($1) GROUP BY campaign_id
@@ -632,9 +647,11 @@ SELECT id as campaign_id,
     COALESCE(c.num, 0) AS clicks,
     COALESCE(b.num, 0) AS bounces,
     COALESCE(l.lists, '[]') AS lists,
+    COALESCE(s.segments, '[]') AS segments,
     COALESCE(m.media, '[]') AS media
 FROM (SELECT id FROM UNNEST($1) AS id) x
 LEFT JOIN lists AS l ON (l.campaign_id = id)
+LEFT JOIN segments AS s ON (s.campaign_id = id)
 LEFT JOIN media AS m ON (m.campaign_id = id)
 LEFT JOIN views AS v ON (v.campaign_id = id)
 LEFT JOIN clicks AS c ON (c.campaign_id = id)
@@ -649,7 +666,14 @@ SELECT campaigns.*, COALESCE(templates.body, (SELECT body FROM templates WHERE i
         campaign_lists.list_name AS name
         FROM campaign_lists WHERE campaign_lists.campaign_id = campaigns.id
 	) l
-) AS lists
+) AS lists,
+(
+	SELECT COALESCE(ARRAY_TO_JSON(ARRAY_AGG(s)), '[]') FROM (
+		SELECT COALESCE(campaign_segments.segment_id, 0) AS id,
+        campaign_segments.segment_name AS name
+        FROM campaign_segments WHERE campaign_segments.campaign_id = campaigns.id
+	) s
+) AS segments
 FROM campaigns
 LEFT JOIN templates ON (templates.id = (CASE WHEN $2=0 THEN campaigns.template_id ELSE $2 END))
 WHERE campaigns.id = $1;
@@ -870,6 +894,14 @@ medi AS (
     INSERT INTO campaign_media (campaign_id, media_id, filename)
         (SELECT $1 AS campaign_id, id, filename FROM media WHERE id=ANY($19::INT[]))
         ON CONFLICT (campaign_id, media_id) DO NOTHING
+),
+segd AS (
+    DELETE FROM campaign_segments WHERE campaign_id = $1
+),
+segi AS (
+    INSERT INTO campaign_segments (campaign_id, segment_id, segment_name)
+        (SELECT $1 AS campaign_id, id, name FROM segments WHERE id=ANY($20::INT[]))
+        ON CONFLICT (campaign_id, segment_id) DO UPDATE SET segment_name = EXCLUDED.segment_name
 )
 INSERT INTO campaign_lists (campaign_id, list_id, list_name)
     (SELECT $1 as campaign_id, id, name FROM lists WHERE id=ANY($14::INT[]))

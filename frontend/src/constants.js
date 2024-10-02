@@ -3,6 +3,7 @@ export const models = Object.freeze({
   lang: 'lang',
   dashboard: 'dashboard',
   lists: 'lists',
+  segments: 'segments',
   subscribers: 'subscribers',
   campaigns: 'campaigns',
   templates: 'templates',

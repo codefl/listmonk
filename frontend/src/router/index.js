@@ -38,13 +38,13 @@ const routes = [
   {
     path: '/segments',
     name: 'segments',
-    meta: { title: 'globals.terms.segments', group: 'segments' },
+    meta: { title: 'globals.terms.segments', group: 'subscribers' },
     component: () => import('../views/Segments.vue'),
   },
   {
     path: '/segments/:id',
     name: 'segment',
-    meta: { title: 'globals.terms.segments', group: 'segments' },
+    meta: { title: 'globals.terms.segments', group: 'subscribers' },
     component: () => import('../views/Segments.vue'),
   },
   {

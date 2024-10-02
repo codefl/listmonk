@@ -300,8 +300,9 @@ type CampaignMeta struct {
 	// in null lists data to be returned. For that reason, campaign_lists maintains
 	// campaign-list associations with a historical record of id + name that persist
 	// even after a list is deleted.
-	Lists types.JSONText `db:"lists" json:"lists"`
-	Media types.JSONText `db:"media" json:"media"`
+	Lists    types.JSONText `db:"lists" json:"lists"`
+	Segments types.JSONText `db:"segments" json:"segments"`
+	Media    types.JSONText `db:"media" json:"media"`
 
 	StartedAt null.Time `db:"started_at" json:"started_at"`
 	ToSend    int       `db:"to_send" json:"to_send"`
@@ -532,6 +533,7 @@ func (camps Campaigns) LoadStats(stmt *sqlx.Stmt) error {
 	for i, c := range meta {
 		if c.CampaignID == camps[i].ID {
 			camps[i].Lists = c.Lists
+			camps[i].Segments = c.Segments
 			camps[i].Views = c.Views
 			camps[i].Clicks = c.Clicks
 			camps[i].Bounces = c.Bounces

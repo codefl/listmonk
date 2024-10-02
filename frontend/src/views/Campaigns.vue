@@ -95,6 +95,15 @@
           </li>
         </ul>
       </b-table-column>
+
+      <b-table-column v-slot="props" cell-class="lists" field="segments" :label="$t('globals.terms.segments')" width="15%">
+        <ul>
+          <li v-for="s in props.row.segments" :key="s.id">
+              {{ s.name }}
+          </li>
+        </ul>
+      </b-table-column>
+
       <b-table-column v-slot="props" field="created_at" :label="$t('campaigns.timestamps')" width="19%" sortable
         header-class="cy-timestamp">
         <div class="fields timestamps" :set="stats = getCampaignStats(props.row)">
@@ -409,6 +418,7 @@ export default Vue.extend({
         archive_slug: `${c.name}-2`,
         subject: c.subject,
         lists: c.lists.map((l) => l.id),
+        segments: c.segments.map((s) => s.id),
         type: c.type,
         from_email: c.fromEmail,
         content_type: c.contentType,

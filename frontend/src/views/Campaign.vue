@@ -75,6 +75,9 @@
                 <list-selector v-model="form.lists" :selected="form.lists" :all="lists.results" :disabled="!canEdit"
                   :label="$t('globals.terms.lists')" :placeholder="$t('campaigns.sendToLists')" />
 
+                <list-selector v-model="form.segments" :selected="form.segments" :all="segments.results" :disabled="!canEdit"
+                  :label="$t('globals.terms.segments')" :placeholder="$t('campaigns.sendToSegments')" />
+
                 <b-field :label="$tc('globals.terms.template')" label-position="on-border">
                   <b-select :placeholder="$tc('globals.terms.template')" v-model="form.templateId" name="template"
                     :disabled="!canEdit" required>
@@ -307,6 +310,7 @@ export default Vue.extend({
 
       // IDs from ?list_id query param.
       selListIDs: [],
+      selSegmentIDs: [],
 
       // Binds form input values.
       form: {
@@ -319,6 +323,7 @@ export default Vue.extend({
         messenger: 'email',
         templateId: 0,
         lists: [],
+        segments: [],
         tags: [],
         sendAt: null,
         content: { contentType: 'richtext', body: '' },
@@ -465,6 +470,7 @@ export default Vue.extend({
         name: this.form.name,
         subject: this.form.subject,
         lists: this.form.lists.map((l) => l.id),
+        segments: this.form.segments.map((s) => s.id),
         from_email: this.form.fromEmail,
         messenger: this.form.messenger,
         type: 'regular',
@@ -490,6 +496,7 @@ export default Vue.extend({
         name: this.form.name,
         subject: this.form.subject,
         lists: this.form.lists.map((l) => l.id),
+        segments: this.form.segments.map((s) => s.id),
         from_email: this.form.fromEmail,
         content_type: 'richtext',
         messenger: this.form.messenger,
@@ -515,6 +522,7 @@ export default Vue.extend({
         name: this.form.name,
         subject: this.form.subject,
         lists: this.form.lists.map((l) => l.id),
+        segments: this.form.segments.map((s) => s.id),
         from_email: this.form.fromEmail,
         messenger: this.form.messenger,
         type: 'regular',
@@ -596,7 +604,7 @@ export default Vue.extend({
   },
 
   computed: {
-    ...mapState(['settings', 'loading', 'lists', 'templates']),
+    ...mapState(['settings', 'loading', 'lists', 'segments', 'templates']),
 
     canEdit() {
       return this.isNew
@@ -623,6 +631,14 @@ export default Vue.extend({
       return this.lists.results.filter((l) => this.selListIDs.indexOf(l.id) > -1);
     },
 
+    selectedSegments() {
+      if (this.selSegmentIDs.length === 0 || !this.segments.results) {
+        return [];
+      }
+
+      return this.segments.results.filter((s) => this.selSegmentIDs.indexOf(s.id) > -1);
+    },
+
     messengers() {
       return ['email', ...this.settings.messengers.map((m) => m.name)];
     },
@@ -640,6 +656,9 @@ export default Vue.extend({
     selectedLists() {
       this.form.lists = this.selectedLists;
     },
+    selectedSegments() {
+      this.form.segments = this.selectedSegments;
+    }
   },
 
   mounted() {
