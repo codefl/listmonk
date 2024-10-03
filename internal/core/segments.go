@@ -124,7 +124,7 @@ func (c *Core) DeleteSegments(ids []int) error {
 	return nil
 }
 
-// CountSubscribersInSegment count subscribers using segment query
+// CountSubscribersByQuery count subscribers using a segment query
 func (c *Core) CountSubscribersByQuery(query string) (int, error) {
 	// If there's no condition, it's a "get all" call which can probably be optionally pulled from cache.
 	cond := query

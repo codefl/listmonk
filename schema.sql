@@ -175,13 +175,14 @@ CREATE TABLE campaign_sends (
     id               BIGSERIAL PRIMARY KEY,
     campaign_id      INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
-    -- Subscribers may be deleted, but the view counts should remain.
+    -- Subscribers may be deleted, but the send counts should remain.
     subscriber_id    INTEGER NULL REFERENCES subscribers(id) ON DELETE SET NULL ON UPDATE CASCADE,
     send_status      campaign_send_status NOT NULL DEFAULT 'pending',
     created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 DROP INDEX IF EXISTS idx_sends_camp_id_status; CREATE INDEX idx_sends_camp_id_status ON campaign_sends(campaign_id, send_status);
 DROP INDEX IF EXISTS idx_sends_subscriber_id; CREATE INDEX idx_sends_subscriber_id ON campaign_sends(subscriber_id);
+DROP INDEX IF EXISTS uidx_sends_camp_id_subs_id; CREATE UNIQUE INDEX uidx_sends_camp_id_subs_id ON campaign_sends(campaign_id, subscriber_id);
 DROP INDEX IF EXISTS idx_sends_date; CREATE INDEX idx_sends_date ON campaign_sends((TIMEZONE('UTC', created_at)::DATE));
 
 DROP TABLE IF EXISTS campaign_views CASCADE;

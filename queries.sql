@@ -519,7 +519,7 @@ tpl AS (
     SELECT (CASE WHEN $13 = 0 THEN id ELSE $13 END) AS id FROM templates WHERE is_default IS TRUE
 ),
 counts AS (
-    SELECT COALESCE(COUNT(id), 0) as to_send, COALESCE(MAX(id), 0) as max_sub_id
+    SELECT COALESCE(MAX(id), 0) as max_sub_id
     FROM subscribers
     LEFT JOIN campLists ON (campLists.campaign_id = ANY($14::INT[]))
     LEFT JOIN subscriber_lists ON (
@@ -535,9 +535,9 @@ counts AS (
     AND subscribers.status='enabled'
 ),
 camp AS (
-    INSERT INTO campaigns (uuid, type, name, subject, from_email, body, altbody, content_type, send_at, headers, tags, messenger, template_id, to_send, max_subscriber_id, archive, archive_slug, archive_template_id, archive_meta)
+    INSERT INTO campaigns (uuid, type, name, subject, from_email, body, altbody, content_type, send_at, headers, tags, messenger, template_id, max_subscriber_id, archive, archive_slug, archive_template_id, archive_meta)
         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-            (SELECT id FROM tpl), (SELECT to_send FROM counts),
+            (SELECT id FROM tpl), 
             (SELECT max_sub_id FROM counts), $15, $16,
             (CASE WHEN $17 = 0 THEN (SELECT id FROM tpl) ELSE $17 END), $18
         RETURNING id
@@ -717,7 +717,6 @@ counts AS (
     -- For each campaign above, get the total number of subscribers and the max_subscriber_id
     -- across all its lists.
     SELECT id AS campaign_id,
-                 COUNT(DISTINCT(subscriber_lists.subscriber_id)) AS to_send,
                  COALESCE(MAX(subscriber_lists.subscriber_id), 0) AS max_subscriber_id
     FROM camps
     LEFT JOIN campLists ON (campLists.campaign_id = camps.id)
@@ -744,10 +743,9 @@ updateCounts AS (
     FROM uc WHERE campaigns.id = uc.campaign_id
 ),
 u AS (
-    -- For each campaign, update the to_send count and set the max_subscriber_id.
+    -- For each campaign, set the max_subscriber_id.
     UPDATE campaigns AS ca
-    SET to_send = co.to_send,
-        status = (CASE WHEN status != 'running' THEN 'running' ELSE status END),
+    SET status = (CASE WHEN status != 'running' THEN 'running' ELSE status END),
         max_subscriber_id = co.max_subscriber_id,
         started_at=(CASE WHEN ca.started_at IS NULL THEN NOW() ELSE ca.started_at END)
     FROM (SELECT * FROM counts) co
@@ -900,30 +898,30 @@ WHERE campaign_id in (SELECT id FROM camps) and send_status = 'pending';
 -- name: generate-campaign-sends
 -- Generate a list of subscribers that should be included in the campaign based on lists and segments
 WITH camps AS (
-    SELECT id, type FROM campaigns WHERE id = $1 AND status in ('draft', 'scheduled')
+    SELECT id, type FROM campaigns WHERE id = $1 AND status in ('draft', 'scheduled', 'paused')
 ),
 campLists AS (
     SELECT lists.id AS list_id, optin FROM lists
     INNER JOIN campaign_lists ON lists.id = campaign_lists.list_id
-    INNER JOIN camps ON (camapign_lists.campaign_id = camps.id)
+    INNER JOIN camps ON (campaign_lists.campaign_id = camps.id)
 ),
 subIDs AS (
-    SELECT DISTINCT ON (subscriber_lists.subscriber_id) subscriber_id, list_id, status 
+    SELECT DISTINCT ON (subscriber_lists.subscriber_id) subscriber_id, subscriber_lists.list_id, status 
     FROM subscriber_lists INNER JOIN campLists ON (subscriber_lists.list_id = campLists.list_id)
     WHERE
         -- ARRAY_AGG is 20x faster instead of a simple SELECT because the query planner
         -- understands the CTE's cardinality after the scalar array conversion. Huh.
-        list_id = ANY((SELECT ARRAY_AGG(list_id) FROM campLists)::INT[]) AND
+        subscriber_lists.list_id = ANY((SELECT ARRAY_AGG(list_id) FROM campLists)::INT[]) AND
         status != 'unsubscribed'
     -- The order by is to make sure the "single" optin list is ranked ahead of "double" optin list
-    ORDER BY subscriber_id, campLists.option DESC  
+    ORDER BY subscriber_id, campLists.optin DESC  
 ),
 subs AS (
     SELECT subscribers.* FROM subIDs
     INNER JOIN campLists ON (campLists.list_id = subIDs.list_id)
     INNER JOIN subscribers ON (
         subscribers.status != 'blocklisted' AND
-        subscribers.id = subIDs.subscriber_id AND
+        subscribers.id = subIDs.subscriber_id
     )
     WHERE
         CASE
@@ -938,11 +936,12 @@ subs AS (
             ELSE subIDs.status != 'unsubscribed'
         END
         %segment_query%
-),
+)
 INSERT INTO campaign_sends(campaign_id, subscriber_id, send_status)
 SELECT $1, subscriber_lists.subscriber_id, 'pending'
 FROM subscriber_lists, subs
-WHERE subscriber_lists.subscriber_id = subs.id;
+WHERE subscriber_lists.subscriber_id = subs.id
+ON CONFLICT (campaign_id, subscriber_id) DO NOTHING;
 
 -- name: estimate-campaign-sends
 -- Estimate number of subscribers in a campaign
@@ -952,25 +951,25 @@ WITH camps AS (
 campLists AS (
     SELECT lists.id AS list_id, optin FROM lists
     INNER JOIN campaign_lists ON lists.id = campaign_lists.list_id
-    INNER JOIN camps ON (camapign_lists.campaign_id = camps.id)
+    INNER JOIN camps ON (campaign_lists.campaign_id = camps.id)
 ),
 subIDs AS (
-    SELECT DISTINCT ON (subscriber_lists.subscriber_id) subscriber_id, list_id, status 
+    SELECT DISTINCT ON (subscriber_lists.subscriber_id) subscriber_id, subscriber_lists.list_id, status 
     FROM subscriber_lists INNER JOIN campLists ON (subscriber_lists.list_id = campLists.list_id)
     WHERE
         -- ARRAY_AGG is 20x faster instead of a simple SELECT because the query planner
         -- understands the CTE's cardinality after the scalar array conversion. Huh.
-        list_id = ANY((SELECT ARRAY_AGG(list_id) FROM campLists)::INT[]) AND
+        subscriber_lists.list_id = ANY((SELECT ARRAY_AGG(list_id) FROM campLists)::INT[]) AND
         status != 'unsubscribed'
     -- The order by is to make sure the "single" optin list is ranked ahead of "double" optin list
-    ORDER BY subscriber_id, campLists.option DESC  
+    ORDER BY subscriber_id, campLists.optin DESC  
 ),
 subs AS (
     SELECT subscribers.* FROM subIDs
     INNER JOIN campLists ON (campLists.list_id = subIDs.list_id)
     INNER JOIN subscribers ON (
         subscribers.status != 'blocklisted' AND
-        subscribers.id = subIDs.subscriber_id AND
+        subscribers.id = subIDs.subscriber_id
     )
     WHERE
         CASE
@@ -985,7 +984,7 @@ subs AS (
             ELSE subIDs.status != 'unsubscribed'
         END
         %segment_query%
-),
+)
 SELECT count(distinct subs.id)
 FROM subscriber_lists, subs
 WHERE subscriber_lists.subscriber_id = subs.id;
@@ -1062,9 +1061,9 @@ INSERT INTO campaign_lists (campaign_id, list_id, list_name)
 
 -- name: update-campaign-counts
 UPDATE campaigns SET
-    to_send=(CASE WHEN $2 != 0 THEN $2 ELSE to_send END),
+    to_send=(CASE WHEN $2 >= 0 THEN $2 ELSE to_send END),
     sent=sent+$3,
-    last_subscriber_id=(CASE WHEN $4 > 0 THEN $4 ELSE to_send END),
+    last_subscriber_id=(CASE WHEN $4 > 0 THEN $4 ELSE last_subscriber_id END),
     updated_at=NOW()
 WHERE id=$1;
 

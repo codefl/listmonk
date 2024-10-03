@@ -27,7 +27,7 @@ type pipe struct {
 func (m *Manager) newPipe(c *models.Campaign) (*pipe, error) {
 	// Validate messenger.
 	if _, ok := m.messengers[c.Messenger]; !ok {
-		m.store.UpdateCampaignStatus(c.ID, models.CampaignStatusCancelled)
+		_ = m.store.UpdateCampaignStatus(c.ID, models.CampaignStatusCancelled)
 		return nil, fmt.Errorf("unknown messenger %s on campaign %s", c.Messenger, c.Name)
 	}
 
@@ -51,7 +51,7 @@ func (m *Manager) newPipe(c *models.Campaign) (*pipe, error) {
 
 	// Increment the waitgroup so that Wait() blocks immediately. This is necessary
 	// as a campaign pipe is created first and subscribers/messages under it are
-	// fetched asynchronolusly later. The messages each add to the wg and that
+	// fetched asynchronously later. The messages each add to the wg and that
 	// count is used to determine the exhaustion/completion of all messages.
 	p.wg.Add(1)
 
@@ -185,7 +185,7 @@ func (p *pipe) cleanup() {
 	}()
 
 	// Update campaign's "sent" count.
-	if err := p.m.store.UpdateCampaignCounts(p.camp.ID, 0, int(p.sent.Load()), int(p.lastID.Load())); err != nil {
+	if err := p.m.store.UpdateCampaignCounts(p.camp.ID, -1, int(p.sent.Load()), int(p.lastID.Load())); err != nil {
 		p.m.log.Printf("error updating campaign counts (%s): %v", p.camp.Name, err)
 	}
 

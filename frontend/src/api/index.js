@@ -194,11 +194,11 @@ export const countSubscribersInSegment = (data) => http.post(
 );
 
 export const estimateCampaign = (id) => http.get(
-  `/api/segments/${id}`,
+  `/api/campaigns/${id}/estimate`,
 );
 
 export const generateCampaignSends = (id) => http.post(
-  `/api/segments/${id}`,
+  `/api/campaigns/${id}/generate-campaign-sends`,
   {},
 );
 

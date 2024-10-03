@@ -665,7 +665,7 @@ func handleEstimateCampaignSends(c echo.Context) error {
 	}
 
 	// Estimate total subscribers in campaign
-	total, err := app.core.EstimateCampaignSends(&campaign)
+	total, err := app.core.EstimateCampaignSends(campaign.ID)
 	if err != nil {
 		return err
 	}

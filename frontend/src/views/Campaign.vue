@@ -43,16 +43,18 @@
                 {{ $t('campaigns.schedule') }}
               </b-button>
             </b-field>
-          </b-field>
-          <b-field expanded v-if="canStart || canSchedule">
-            <b-button expanded @click="estimateCampaign" :loading="loading.campaigns" type="is-primary"
-                      icon-left="rocket-launch-outline" data-cy="btn-estimate">
-              {{ $t('campaigns.estimate') }}
-            </b-button>
-            <b-button expanded @click="generateCampaignSends" :loading="loading.campaigns" type="is-primary"
-                      icon-left="rocket-launch-outline" data-cy="btn-estimate">
-              {{ $t('campaigns.generateCampaignSends') }}
-            </b-button>
+            <b-field expanded v-if="canStart || canSchedule">
+              <b-button expanded @click="estimateCampaign" :loading="loading.campaigns" type="is-primary"
+                        icon-left="email-outline" data-cy="btn-estimate">
+                {{ $t('campaigns.estimate') }}
+              </b-button>
+            </b-field>
+            <b-field expanded v-if="canStart || canSchedule">
+              <b-button expanded @click="generateCampaignSends" :loading="loading.campaigns" type="is-primary"
+                        icon-left="format-list-bulleted-square" data-cy="btn-estimate">
+                {{ $t('campaigns.generateCampaignSends') }}
+              </b-button>
+            </b-field>
           </b-field>
         </div>
       </div>
@@ -585,7 +587,7 @@ export default Vue.extend({
 
     // Estimate campaign subscribers.
     estimateCampaign() {
-      if (!this.canStart && !this.canSchedule) {
+      if (this.canStart || this.canSchedule) {
         this.$api.estimateCampaign(this.data.id).then((data) => {
           this.$utils.confirm(this.$t('campaigns.messages.subscriber.count', { total: data.total }));
         });
@@ -594,9 +596,9 @@ export default Vue.extend({
 
     // Generate campaign sends.
     generateCampaignSends() {
-      if (!this.canStart && !this.canSchedule) {
+      if (this.canStart || this.canSchedule) {
         this.$api.generateCampaignSends(this.data.id).then((data) => {
-          this.$utils.confirm(this.$t('campaigns.messages.subscriber.count', { total: data.total }));
+          this.$utils.confirm(this.$t('campaigns.messages.generate.sends', { total: data.total }));
         });
       }
     },
