@@ -849,6 +849,152 @@ u AS (
 )
 SELECT * FROM subs;
 
+-- name: next-campaign-subscribers-new
+-- Returns a batch of subscribers in a given campaign starting, which means
+-- every fetch returns a new batch of subscribers until all rows are exhausted.
+WITH camps AS (
+    SELECT id, last_subscriber_id, max_subscriber_id, type FROM campaigns WHERE id = $1 AND status='running'
+),
+subBatchIDs AS (
+    SELECT subscriber_id, send_status FROM campaign_sends 
+    INNER JOIN camps ON (campaign_sends.campaign_id = camps.id)
+    WHERE send_status = 'pending'
+    ORDER BY subscriber_id LIMIT $2
+),
+subIDs AS (
+    SELECT DISTINCT ON (subscriber_lists.subscriber_id) subscriber_lists.subscriber_id, list_id, status 
+    FROM subscriber_lists 
+    INNER JOIN subBatchIDs ON (subscriber_lists.subscriber_id = subBatchIDs.subscriber_id)
+    WHERE
+        -- ARRAY_AGG is 20x faster instead of a simple SELECT because the query planner
+        -- understands the CTE's cardinality after the scalar array conversion. Huh.
+        list_id = ANY((SELECT ARRAY_AGG(list_id) FROM campaign_lists WHERE campaign_id = $1)::INT[]) AND
+        status != 'unsubscribed'
+),
+subs AS (
+    SELECT subscribers.* FROM subIDs
+    INNER JOIN subscribers ON (
+        subscribers.status != 'blocklisted' AND
+        subscribers.id = subIDs.subscriber_id
+    )
+),
+u AS (
+    UPDATE campaign_sends SET send_status = 'sending'
+    WHERE campaign_sends.campaign_id = $1 AND campaign_sends.subscriber_id in (SELECT id FROM subs)
+)
+SELECT * FROM subs;
+
+-- name: query-campaign-segments
+-- Query campaign segments
+SELECT *
+FROM segments WHERE id in (SELECT segment_id FROM campaign_segments WHERE campaign_id = $1);
+
+-- name: remove-pending-campaign-sends
+-- Remove pending campaign sends
+WITH camps AS (
+    SELECT id, type FROM campaigns WHERE id = $1 AND status in ('draft', 'scheduled')
+)
+DELETE FROM campaign_sends
+WHERE campaign_id in (SELECT id FROM camps) and send_status = 'pending';
+
+-- name: generate-campaign-sends
+-- Generate a list of subscribers that should be included in the campaign based on lists and segments
+WITH camps AS (
+    SELECT id, type FROM campaigns WHERE id = $1 AND status in ('draft', 'scheduled')
+),
+campLists AS (
+    SELECT lists.id AS list_id, optin FROM lists
+    INNER JOIN campaign_lists ON lists.id = campaign_lists.list_id
+    INNER JOIN camps ON (camapign_lists.campaign_id = camps.id)
+),
+subIDs AS (
+    SELECT DISTINCT ON (subscriber_lists.subscriber_id) subscriber_id, list_id, status 
+    FROM subscriber_lists INNER JOIN campLists ON (subscriber_lists.list_id = campLists.list_id)
+    WHERE
+        -- ARRAY_AGG is 20x faster instead of a simple SELECT because the query planner
+        -- understands the CTE's cardinality after the scalar array conversion. Huh.
+        list_id = ANY((SELECT ARRAY_AGG(list_id) FROM campLists)::INT[]) AND
+        status != 'unsubscribed'
+    -- The order by is to make sure the "single" optin list is ranked ahead of "double" optin list
+    ORDER BY subscriber_id, campLists.option DESC  
+),
+subs AS (
+    SELECT subscribers.* FROM subIDs
+    INNER JOIN campLists ON (campLists.list_id = subIDs.list_id)
+    INNER JOIN subscribers ON (
+        subscribers.status != 'blocklisted' AND
+        subscribers.id = subIDs.subscriber_id AND
+    )
+    WHERE
+        CASE
+            -- For optin campaigns, only e-mail 'unconfirmed' subscribers.
+            WHEN (SELECT type FROM camps) = 'optin' THEN subIDs.status = 'unconfirmed' AND campLists.optin = 'double'
+
+            -- For regular campaigns with double optin lists, only e-mail 'confirmed' subscribers.
+            WHEN campLists.optin = 'double' THEN subIDs.status = 'confirmed'
+
+            -- For regular campaigns with non-double optin lists, e-mail everyone
+            -- except unsubscribed subscribers.
+            ELSE subIDs.status != 'unsubscribed'
+        END
+        %segment_query%
+),
+INSERT INTO campaign_sends(campaign_id, subscriber_id, send_status)
+SELECT $1, subscriber_lists.subscriber_id, 'pending'
+FROM subscriber_lists, subs
+WHERE subscriber_lists.subscriber_id = subs.id;
+
+-- name: estimate-campaign-sends
+-- Estimate number of subscribers in a campaign
+WITH camps AS (
+    SELECT id, type FROM campaigns WHERE id = $1
+),
+campLists AS (
+    SELECT lists.id AS list_id, optin FROM lists
+    INNER JOIN campaign_lists ON lists.id = campaign_lists.list_id
+    INNER JOIN camps ON (camapign_lists.campaign_id = camps.id)
+),
+subIDs AS (
+    SELECT DISTINCT ON (subscriber_lists.subscriber_id) subscriber_id, list_id, status 
+    FROM subscriber_lists INNER JOIN campLists ON (subscriber_lists.list_id = campLists.list_id)
+    WHERE
+        -- ARRAY_AGG is 20x faster instead of a simple SELECT because the query planner
+        -- understands the CTE's cardinality after the scalar array conversion. Huh.
+        list_id = ANY((SELECT ARRAY_AGG(list_id) FROM campLists)::INT[]) AND
+        status != 'unsubscribed'
+    -- The order by is to make sure the "single" optin list is ranked ahead of "double" optin list
+    ORDER BY subscriber_id, campLists.option DESC  
+),
+subs AS (
+    SELECT subscribers.* FROM subIDs
+    INNER JOIN campLists ON (campLists.list_id = subIDs.list_id)
+    INNER JOIN subscribers ON (
+        subscribers.status != 'blocklisted' AND
+        subscribers.id = subIDs.subscriber_id AND
+    )
+    WHERE
+        CASE
+            -- For optin campaigns, only e-mail 'unconfirmed' subscribers.
+            WHEN (SELECT type FROM camps) = 'optin' THEN subIDs.status = 'unconfirmed' AND campLists.optin = 'double'
+
+            -- For regular campaigns with double optin lists, only e-mail 'confirmed' subscribers.
+            WHEN campLists.optin = 'double' THEN subIDs.status = 'confirmed'
+
+            -- For regular campaigns with non-double optin lists, e-mail everyone
+            -- except unsubscribed subscribers.
+            ELSE subIDs.status != 'unsubscribed'
+        END
+        %segment_query%
+),
+SELECT count(distinct subs.id)
+FROM subscriber_lists, subs
+WHERE subscriber_lists.subscriber_id = subs.id;
+
+-- name: count-campaign-sends
+-- Count number of subscribers in campaign sends table
+SELECT count(*) as total FROM campaign_sends WHERE campaign_id = $1;
+
+
 -- name: delete-campaign-views
 DELETE FROM campaign_views WHERE created_at < $1;
 

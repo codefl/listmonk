@@ -647,3 +647,56 @@ func makeOptinCampaignMessage(o campaignReq, app *App) (campaignReq, error) {
 	o.Body = b.String()
 	return o, nil
 }
+
+// handleEstimateCampaignSends returns the number of subscribers in a campaign
+func handleEstimateCampaignSends(c echo.Context) error {
+	var (
+		app   = c.Get("app").(*App)
+		id, _ = strconv.Atoi(c.Param("id"))
+	)
+
+	// Get campaign by id
+	if id < 1 {
+		return echo.NewHTTPError(http.StatusBadRequest, app.i18n.T("globals.messages.invalidID"))
+	}
+	campaign, err := app.core.GetCampaign(id, "", "")
+	if err != nil {
+		return err
+	}
+
+	// Estimate total subscribers in campaign
+	total, err := app.core.EstimateCampaignSends(&campaign)
+	if err != nil {
+		return err
+	}
+
+	resp := map[string]interface{}{}
+	resp["total"] = total
+	return c.JSON(http.StatusOK, okResp{resp})
+}
+
+func handleGenerateCampaignSends(c echo.Context) error {
+	var (
+		app   = c.Get("app").(*App)
+		id, _ = strconv.Atoi(c.Param("id"))
+	)
+
+	// Get campaign by id
+	if id < 1 {
+		return echo.NewHTTPError(http.StatusBadRequest, app.i18n.T("globals.messages.invalidID"))
+	}
+	campaign, err := app.core.GetCampaign(id, "", "")
+	if err != nil {
+		return err
+	}
+
+	// Generate campaign sends
+	total, err := app.core.GenerateCampaignSends(&campaign)
+	if err != nil {
+		return err
+	}
+
+	resp := map[string]interface{}{}
+	resp["total"] = total
+	return c.JSON(http.StatusOK, okResp{resp})
+}

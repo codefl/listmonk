@@ -43,7 +43,7 @@ func (s *store) NextCampaigns(currentIDs []int64, sentCounts []int64) ([]*models
 // batch above that.
 func (s *store) NextSubscribers(campID, limit int) ([]models.Subscriber, error) {
 	var out []models.Subscriber
-	err := s.queries.NextCampaignSubscribers.Select(&out, campID, limit)
+	err := s.queries.NextCampaignSubscribersNew.Select(&out, campID, limit)
 	return out, err
 }
 

@@ -2,7 +2,9 @@ package core
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gofrs/uuid/v5"
@@ -283,6 +285,18 @@ func (c *Core) UpdateCampaignStatus(id int, status string) (models.Campaign, err
 		return models.Campaign{}, echo.NewHTTPError(http.StatusBadRequest, errMsg)
 	}
 
+	if status == models.CampaignStatusScheduled || status == models.CampaignStatusRunning {
+		if cm.Status == models.CampaignStatusDraft {
+			err := c.generateCampaignSends(&cm)
+			if err != nil {
+				c.log.Printf("error updating campaign status: %v", err)
+
+				return models.Campaign{}, echo.NewHTTPError(http.StatusInternalServerError,
+					c.i18n.Ts("globals.messages.errorUpdating", "name", "{globals.terms.campaign}", "error", pqErrMsg(err)))
+			}
+		}
+	}
+
 	res, err := c.q.UpdateCampaignStatus.Exec(cm.ID, status)
 	if err != nil {
 		c.log.Printf("error updating campaign status: %v", err)
@@ -298,6 +312,43 @@ func (c *Core) UpdateCampaignStatus(id int, status string) (models.Campaign, err
 
 	cm.Status = status
 	return cm, nil
+}
+
+func (c *Core) GenerateCampaignSends(cm *models.Campaign) (int, error) {
+	if err := c.generateCampaignSends(cm); err != nil {
+		c.log.Printf("error generating campaign sends: %v", err)
+		return 0, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("campaigns.messages.error.generateCampaignSends", "error", pqErrMsg(err)))
+	}
+
+	total := 0
+	if err := c.q.CountCampaignSends.Select(&total, cm.ID); err != nil {
+		c.log.Printf("error generating campaign sends: %v", err)
+		return 0, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("campaigns.messages.error.generateCampaignSends", "error", pqErrMsg(err)))
+	}
+
+	return total, nil
+}
+
+func (c *Core) generateCampaignSends(cm *models.Campaign) error {
+	if cm.Status != models.CampaignStatusDraft && cm.Status != models.CampaignStatusPaused && cm.Status != models.CampaignStatusScheduled {
+		return errors.New("Campaign has to be in draft, scheduled or paused status to be able to generate campaign sends!")
+	}
+
+	_, err := c.q.RemovePendingCampaignSends.Exec(cm.ID)
+	if err != nil {
+		return err
+	}
+
+	cond, err := c.getCampaignSegmentCond(cm.ID)
+	if err != nil {
+		return err
+	}
+
+	stmt := strings.Replace(c.q.GenerateCampaignSends, "segment_query", cond, 1)
+	_, err = c.db.Exec(stmt)
+	return err
 }
 
 // UpdateCampaignArchive updates a campaign's archive properties.
@@ -435,4 +486,46 @@ func (c *Core) DeleteCampaignLinkClicks(before time.Time) error {
 	}
 
 	return nil
+}
+
+func (c *Core) getCampaignSegmentCond(cmID int) (string, error) {
+	var segments []*models.Segment
+	err := c.q.QueryCampaignSegments.Select(&segments, cmID)
+	if err != nil {
+		return "", err
+	}
+	cond := ""
+	if len(segments) > 0 {
+		var criteria []string
+		for _, s := range segments {
+			if strings.TrimSpace(s.SegmentQuery) != "" {
+				criteria = append(criteria, "("+s.SegmentQuery+")")
+			}
+		}
+		cond := ""
+		if len(criteria) > 0 {
+			cond = strings.Join(criteria, " AND ")
+			cond = " AND " + cond
+		}
+	}
+
+	return cond, nil
+}
+
+func (c *Core) EstimateCampaignSends(cm *models.Campaign) (int, error) {
+	cond, err := c.getCampaignSegmentCond(cm.ID)
+	if err != nil {
+		c.log.Printf("error generating campaign sends: %v", err)
+		return 0, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("campaigns.messages.error.estimateCampaignSends", "error", pqErrMsg(err)))
+	}
+
+	total := 0
+	stmt := strings.Replace(c.q.EstimateCampaignSends, "segment_query", cond, 1)
+	if err = c.db.Select(&total, stmt); err != nil {
+		c.log.Printf("error generating campaign sends: %v", err)
+		return 0, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("campaigns.messages.error.estimateCampaignSends", "error", pqErrMsg(err)))
+	}
+	return total, nil
 }

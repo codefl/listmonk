@@ -133,12 +133,13 @@ func initHTTPHandlers(e *echo.Echo, app *App) {
 	g.GET("/api/segments/:id", handleGetSegments)
 	g.POST("/api/segments", handleCreateSegment)
 	g.PUT("/api/segments/:id", handleUpdateSegment)
-	g.POST("/api/segments/count", handleCountSubscribersByQuery)
+	g.POST("/api/segments/subscriber-count", handleCountSubscribersByQuery)
 	g.DELETE("/api/segments/:id", handleDeleteSegments)
 
 	g.GET("/api/campaigns", handleGetCampaigns)
 	g.GET("/api/campaigns/running/stats", handleGetRunningCampaignStats)
 	g.GET("/api/campaigns/:id", handleGetCampaign)
+	g.GET("/api/campaigns/:id/estimate", handleEstimateCampaignSends)
 	g.GET("/api/campaigns/analytics/:type", handleGetCampaignViewAnalytics)
 	g.GET("/api/campaigns/:id/preview", handlePreviewCampaign)
 	g.POST("/api/campaigns/:id/preview", handlePreviewCampaign)
@@ -150,6 +151,7 @@ func initHTTPHandlers(e *echo.Echo, app *App) {
 	g.PUT("/api/campaigns/:id/status", handleUpdateCampaignStatus)
 	g.PUT("/api/campaigns/:id/archive", handleUpdateCampaignArchive)
 	g.DELETE("/api/campaigns/:id", handleDeleteCampaign)
+	g.POST("/api/campaigns/:id/generate-campaign-sends", handleGenerateCampaignSends)
 
 	g.GET("/api/media", handleGetMedia)
 	g.GET("/api/media/:id", handleGetMedia)

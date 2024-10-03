@@ -189,8 +189,17 @@ export const updateSegment = (data) => http.put(
 );
 
 export const countSubscribersInSegment = (data) => http.post(
-  '/api/segments/count',
+  '/api/segments/subscriber-count',
   data,
+);
+
+export const estimateCampaign = (id) => http.get(
+  `/api/segments/${id}`,
+);
+
+export const generateCampaignSends = (id) => http.post(
+  `/api/segments/${id}`,
+  {},
 );
 
 export const deleteSegment = (id) => http.delete(

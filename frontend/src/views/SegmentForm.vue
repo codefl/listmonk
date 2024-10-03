@@ -108,7 +108,7 @@ export default Vue.extend({
 
     countSegment() {
       this.$api.countSubscribersInSegment({ segment_query: this.form.segmentQuery }).then((data) => {
-        this.$utils.confirm(`Total subscribers in this segment is [${data.total}]`)
+        this.$utils.confirm(this.$t('segments.messages.subscriber.count', { total: data.total }));
       });
     },
   },

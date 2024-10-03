@@ -44,6 +44,16 @@
               </b-button>
             </b-field>
           </b-field>
+          <b-field expanded v-if="canStart || canSchedule">
+            <b-button expanded @click="estimateCampaign" :loading="loading.campaigns" type="is-primary"
+                      icon-left="rocket-launch-outline" data-cy="btn-estimate">
+              {{ $t('campaigns.estimate') }}
+            </b-button>
+            <b-button expanded @click="generateCampaignSends" :loading="loading.campaigns" type="is-primary"
+                      icon-left="rocket-launch-outline" data-cy="btn-estimate">
+              {{ $t('campaigns.generateCampaignSends') }}
+            </b-button>
+          </b-field>
         </div>
       </div>
     </header>
@@ -571,6 +581,24 @@ export default Vue.extend({
       this.$api.updateCampaignArchive(this.data.id, data).then((d) => {
         this.form.archiveSlug = d.archiveSlug;
       });
+    },
+
+    // Estimate campaign subscribers.
+    estimateCampaign() {
+      if (!this.canStart && !this.canSchedule) {
+        this.$api.estimateCampaign(this.data.id).then((data) => {
+          this.$utils.confirm(this.$t('campaigns.messages.subscriber.count', { total: data.total }));
+        });
+      }
+    },
+
+    // Generate campaign sends.
+    generateCampaignSends() {
+      if (!this.canStart && !this.canSchedule) {
+        this.$api.generateCampaignSends(this.data.id).then((data) => {
+          this.$utils.confirm(this.$t('campaigns.messages.subscriber.count', { total: data.total }));
+        });
+      }
     },
 
     // Starts or schedule a campaign.
