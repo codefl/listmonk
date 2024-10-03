@@ -47,6 +47,12 @@ func (s *store) NextSubscribers(campID, limit int) ([]models.Subscriber, error) 
 	return out, err
 }
 
+// UpdateCampaignSendStatus update campaign send status
+func (s *store) UpdateCampaignSendStatus(campID int, subscriberId int, status string) error {
+	_, err := s.queries.UpdateCampaignSendStatus.Exec(campID, subscriberId, status)
+	return err
+}
+
 // GetCampaign fetches a campaign from the database.
 func (s *store) GetCampaign(campID int) (*models.Campaign, error) {
 	var out = &models.Campaign{}

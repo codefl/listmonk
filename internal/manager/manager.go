@@ -29,6 +29,7 @@ const (
 // that provides subscriber and campaign records.
 type Store interface {
 	NextCampaigns(currentIDs []int64, sentCounts []int64) ([]*models.Campaign, error)
+	UpdateCampaignSendStatus(campID int, subscriberId int, status string) error
 	NextSubscribers(campID, limit int) ([]models.Subscriber, error)
 	GetCampaign(campID int) (*models.Campaign, error)
 	GetAttachment(mediaID int) (models.Attachment, error)
@@ -483,6 +484,15 @@ func (m *Manager) worker() {
 			err := m.messengers[msg.Campaign.Messenger].Push(out)
 			if err != nil {
 				m.log.Printf("error sending message in campaign %s: subscriber %d: %v", msg.Campaign.Name, msg.Subscriber.ID, err)
+				err = m.store.UpdateCampaignSendStatus(msg.Campaign.ID, msg.Subscriber.ID, models.CampaignSendStatusFailed)
+				if err != nil {
+					m.log.Printf("Update campaign send status of subscriber [%d] in campaign [%s] error: %v.", msg.Subscriber.ID, msg.Campaign.Name, err)
+				}
+			} else {
+				err = m.store.UpdateCampaignSendStatus(msg.Campaign.ID, msg.Subscriber.ID, models.CampaignSendStatusSent)
+				if err != nil {
+					m.log.Printf("Update campaign send status of subscriber [%d] in campaign [%s] error: %v.", msg.Subscriber.ID, msg.Campaign.Name, err)
+				}
 			}
 
 			// Increment the send rate or the error counter if there was an error.

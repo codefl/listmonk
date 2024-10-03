@@ -994,6 +994,10 @@ WHERE subscriber_lists.subscriber_id = subs.id;
 -- Count number of subscribers in campaign sends table
 SELECT count(*) as total FROM campaign_sends WHERE campaign_id = $1;
 
+-- name: update-campaign-send-status
+-- Update campaign send status
+UPDATE campaign_sends SET send_status = $3 WHERE campaign_id = $1 AND subscriber_id = $2;
+
 
 -- name: delete-campaign-views
 DELETE FROM campaign_views WHERE created_at < $1;

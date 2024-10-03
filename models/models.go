@@ -49,6 +49,11 @@ const (
 	CampaignContentTypeMarkdown = "markdown"
 	CampaignContentTypePlain    = "plain"
 
+	CampaignSendStatusPending = "pending"
+	CampaignSendStatusSending = "sending"
+	CampaignSendStatusFailed  = "failed"
+	CampaignSendStatusSent    = "sent"
+
 	// List.
 	ListTypePrivate = "private"
 	ListTypePublic  = "public"

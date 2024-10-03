@@ -97,6 +97,7 @@ type Queries struct {
 	EstimateCampaignSends      string     `query:"estimate-campaign-sends"`
 	CountCampaignSends         *sqlx.Stmt `query:"count-campaign-sends"`
 	QueryCampaignSegments      *sqlx.Stmt `query:"query-campaign-segments"`
+	UpdateCampaignSendStatus   *sqlx.Stmt `query:"update-campaign-send-status"`
 
 	InsertMedia *sqlx.Stmt `query:"insert-media"`
 	GetMedia    *sqlx.Stmt `query:"get-media"`
