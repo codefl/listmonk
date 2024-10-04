@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/knadh/listmonk/models"
@@ -80,6 +81,13 @@ func (c *Core) CreateSegment(l models.Segment) (models.Segment, error) {
 			c.i18n.Ts("globals.messages.errorUUID", "error", err.Error()))
 	}
 
+	// Validate segment query
+	if err := c.validateSegmentQuery(l.SegmentQuery); err != nil {
+		c.log.Printf("error creating segment: %v", err)
+		return models.Segment{}, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorCreating", "name", "{globals.terms.segment}", "error", pqErrMsg(err)))
+	}
+
 	// Insert and read ID.
 	var newID int
 	l.UUID = uu.String()
@@ -92,8 +100,26 @@ func (c *Core) CreateSegment(l models.Segment) (models.Segment, error) {
 	return c.GetSegment(newID, "")
 }
 
+func (c *Core) validateSegmentQuery(query string) error {
+	// Validate segment query
+	if strings.TrimSpace(query) != "" {
+		stmt := fmt.Sprintf(c.q.CountSubscribersByQuery, " WHERE "+query)
+		total := 0
+		return c.db.Get(&total, stmt)
+	} else {
+		return nil
+	}
+}
+
 // UpdateSegment updates a given segment.
 func (c *Core) UpdateSegment(id int, l models.Segment) (models.Segment, error) {
+	// Validate segment query
+	if err := c.validateSegmentQuery(l.SegmentQuery); err != nil {
+		c.log.Printf("error creating segment: %v", err)
+		return models.Segment{}, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorUpdating", "name", "{globals.terms.segment}", "error", pqErrMsg(err)))
+	}
+
 	res, err := c.q.UpdateSegment.Exec(id, l.Name, l.SegmentQuery, l.Description)
 	if err != nil {
 		c.log.Printf("error updating segment: %v", err)

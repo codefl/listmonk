@@ -66,9 +66,9 @@ func (s *store) UpdateCampaignStatus(campID int, status string) error {
 	return err
 }
 
-// UpdateCampaignStatus updates a campaign's status.
-func (s *store) UpdateCampaignCounts(campID int, toSend int, sent int, lastSubID int) error {
-	_, err := s.queries.UpdateCampaignCounts.Exec(campID, toSend, sent, lastSubID)
+// UpdateCampaignCounts updates a campaign's sent count.
+func (s *store) UpdateCampaignCounts(campID int, toSend int, sent int) error {
+	_, err := s.queries.UpdateCampaignCounts.Exec(campID, toSend, sent)
 	return err
 }
 

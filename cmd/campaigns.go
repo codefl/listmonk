@@ -651,9 +651,33 @@ func makeOptinCampaignMessage(o campaignReq, app *App) (campaignReq, error) {
 // handleEstimateCampaignSends returns the number of subscribers in a campaign
 func handleEstimateCampaignSends(c echo.Context) error {
 	var (
-		app   = c.Get("app").(*App)
-		id, _ = strconv.Atoi(c.Param("id"))
+		app          = c.Get("app").(*App)
+		id, _        = strconv.Atoi(c.Param("id"))
+		listIdStr    = strings.TrimSpace(c.QueryParam("listIds"))
+		segmentIdStr = strings.TrimSpace(c.QueryParam("segmentIds"))
 	)
+
+	listIds := []int{}
+	if listIdStr != "" {
+		for _, idStr := range strings.Split(listIdStr, ",") {
+			if _id, err := strconv.Atoi(idStr); err == nil {
+				listIds = append(listIds, _id)
+			} else {
+				return echo.NewHTTPError(http.StatusBadRequest, app.i18n.T("globals.messages.invalidID"))
+			}
+		}
+	}
+
+	segmentIds := []int{}
+	if segmentIdStr != "" {
+		for _, idStr := range strings.Split(segmentIdStr, ",") {
+			if _id, err := strconv.Atoi(idStr); err == nil {
+				segmentIds = append(segmentIds, _id)
+			} else {
+				return echo.NewHTTPError(http.StatusBadRequest, app.i18n.T("globals.messages.invalidID"))
+			}
+		}
+	}
 
 	// Get campaign by id
 	if id < 1 {
@@ -665,7 +689,7 @@ func handleEstimateCampaignSends(c echo.Context) error {
 	}
 
 	// Estimate total subscribers in campaign
-	total, err := app.core.EstimateCampaignSends(campaign.ID)
+	total, err := app.core.EstimateCampaignSends(campaign.ID, listIds, segmentIds)
 	if err != nil {
 		return err
 	}

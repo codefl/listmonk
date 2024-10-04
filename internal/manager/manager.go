@@ -34,7 +34,7 @@ type Store interface {
 	GetCampaign(campID int) (*models.Campaign, error)
 	GetAttachment(mediaID int) (models.Attachment, error)
 	UpdateCampaignStatus(campID int, status string) error
-	UpdateCampaignCounts(campID int, toSend int, sent int, lastSubID int) error
+	UpdateCampaignCounts(campID int, toSend int, sent int) error
 	CreateLink(url string) (string, error)
 	BlocklistSubscriber(id int64) error
 	DeleteSubscriber(id int64) error

@@ -59,6 +59,7 @@ type Queries struct {
 	CreateSegment           *sqlx.Stmt `query:"create-segment"`
 	QuerySegments           string     `query:"query-segments"`
 	GetSegments             *sqlx.Stmt `query:"get-segments"`
+	GetSegmentsByIds        *sqlx.Stmt `query:"get-segments-by-ids"`
 	UpdateSegment           *sqlx.Stmt `query:"update-segment"`
 	UpdateSegmentsDate      *sqlx.Stmt `query:"update-segments-date"`
 	DeleteSegments          *sqlx.Stmt `query:"delete-segments"`

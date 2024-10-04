@@ -203,9 +203,9 @@ func (c *Core) CreateCampaign(o models.Campaign, listIDs []int, segmentIDs []int
 	}
 
 	// Update to_send count
-	total, err := c.EstimateCampaignSends(newID)
+	total, err := c.EstimateCampaignSends(newID, listIDs, segmentIDs)
 	if err == nil {
-		_, err = c.q.UpdateCampaignCounts.Exec(newID, total, 0, 0)
+		_, err = c.q.UpdateCampaignCounts.Exec(newID, total, 0)
 	}
 
 	out, err := c.GetCampaign(newID, "", "")
@@ -245,11 +245,11 @@ func (c *Core) UpdateCampaign(id int, o models.Campaign, listIDs []int, segmentI
 	}
 
 	// Update to_send count
-	total, err := c.EstimateCampaignSends(id)
+	total, err := c.EstimateCampaignSends(id, listIDs, segmentIDs)
 	if err == nil {
-		_, err = c.q.UpdateCampaignCounts.Exec(id, total, 0, 0)
+		_, err = c.q.UpdateCampaignCounts.Exec(id, total, 0)
 	} else {
-		_, err = c.q.UpdateCampaignCounts.Exec(id, 0, 0, 0)
+		_, err = c.q.UpdateCampaignCounts.Exec(id, 0, 0)
 	}
 
 	out, err := c.GetCampaign(id, "", "")
@@ -312,7 +312,7 @@ func (c *Core) UpdateCampaignStatus(id int, status string) (models.Campaign, err
 			// Update to_send count
 			total := 0
 			if err = c.q.CountCampaignSends.Get(&total, id); err == nil {
-				_, err = c.q.UpdateCampaignCounts.Exec(id, total, 0, 0)
+				_, err = c.q.UpdateCampaignCounts.Exec(id, total, 0)
 			}
 		}
 	}
@@ -514,6 +514,25 @@ func (c *Core) getCampaignSegmentCond(cmID int) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	return c.getSegmentsCond(segments)
+}
+
+func (c *Core) getSegmentsCondByIds(segmentIds []int) (string, error) {
+	if len(segmentIds) == 0 {
+		return "", nil
+	}
+
+	var segments []*models.Segment
+	err := c.q.GetSegmentsByIds.Select(&segments, pq.Array(segmentIds))
+	if err != nil {
+		return "", err
+	}
+
+	return c.getSegmentsCond(segments)
+}
+
+func (c *Core) getSegmentsCond(segments []*models.Segment) (string, error) {
 	cond := ""
 	if len(segments) > 0 {
 		var criteria []string
@@ -531,17 +550,17 @@ func (c *Core) getCampaignSegmentCond(cmID int) (string, error) {
 	return cond, nil
 }
 
-func (c *Core) EstimateCampaignSends(cmID int) (int, error) {
-	cond, err := c.getCampaignSegmentCond(cmID)
+func (c *Core) EstimateCampaignSends(cmID int, listIds, segmentIds []int) (int, error) {
+	cond, err := c.getSegmentsCondByIds(segmentIds)
 	if err != nil {
-		c.log.Printf("error generating campaign sends: %v", err)
+		c.log.Printf("error estimate campaign sends: %v", err)
 		return 0, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("campaigns.messages.error.estimateCampaignSends", "error", pqErrMsg(err)))
 	}
 
 	total := 0
 	stmt := strings.Replace(c.q.EstimateCampaignSends, "%segment_query%", cond, 1)
-	if err = c.db.Get(&total, stmt, cmID); err != nil {
+	if err = c.db.Get(&total, stmt, cmID, pq.Array(listIds)); err != nil {
 		c.log.Printf("error generating campaign sends: %v", err)
 		return 0, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("campaigns.messages.error.estimateCampaignSends", "error", pqErrMsg(err)))

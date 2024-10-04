@@ -188,13 +188,13 @@ export const updateSegment = (data) => http.put(
   { loading: models.segments },
 );
 
-export const countSubscribersInSegment = (data) => http.post(
-  '/api/segments/subscriber-count',
+export const countSubscribersByQuery = (data) => http.post(
+  '/api/segments/count-by-query',
   data,
 );
 
-export const estimateCampaign = (id) => http.get(
-  `/api/campaigns/${id}/estimate`,
+export const estimateCampaign = (id, listIds, segmentIds) => http.get(
+  `/api/campaigns/${id}/estimate?listIds=${listIds}&segmentIds=${segmentIds}`,
 );
 
 export const generateCampaignSends = (id) => http.post(

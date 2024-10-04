@@ -147,8 +147,8 @@ CREATE TABLE campaign_segments (
     id           BIGSERIAL PRIMARY KEY,
     campaign_id  INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE ON UPDATE CASCADE,
 
-    -- Lists may be deleted, so list_id is nullable
-    -- and a copy of the original list name is maintained here.
+    -- Segments may be deleted, so segment_id is nullable
+    -- and a copy of the original segment name is maintained here.
     segment_id      INTEGER NULL REFERENCES segments(id) ON DELETE SET NULL ON UPDATE CASCADE,
     segment_name    TEXT NOT NULL DEFAULT ''
 );

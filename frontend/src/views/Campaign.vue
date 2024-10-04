@@ -25,9 +25,21 @@
       <div class="column is-6">
         <div class="buttons">
           <b-field grouped v-if="isEditing && canEdit">
+            <b-field expanded v-if="canStart || canSchedule">
+              <b-button expanded @click="estimateCampaign" :loading="loading.campaigns" type="is-warning"
+                        icon-left="email-outline" data-cy="btn-estimate">
+                {{ $t('campaigns.estimate') }}
+              </b-button>
+            </b-field>
+            <!--            <b-field expanded v-if="canStart || canSchedule">-->
+            <!--              <b-button expanded @click="generateCampaignSends" :loading="loading.campaigns" type="is-primary"-->
+            <!--                        icon-left="format-list-bulleted-square" data-cy="btn-estimate">-->
+            <!--                {{ $t('campaigns.generateCampaignSends') }}-->
+            <!--              </b-button>-->
+            <!--            </b-field>-->
             <b-field expanded>
               <b-button expanded @click="() => onSubmit('update')" :loading="loading.campaigns" type="is-primary"
-                icon-left="content-save-outline" data-cy="btn-save">
+                        icon-left="content-save-outline" data-cy="btn-save">
                 {{ $t('globals.buttons.saveChanges') }}
               </b-button>
             </b-field>
@@ -41,18 +53,6 @@
               <b-button expanded @click="startCampaign" :loading="loading.campaigns" type="is-primary"
                 icon-left="clock-start" data-cy="btn-schedule">
                 {{ $t('campaigns.schedule') }}
-              </b-button>
-            </b-field>
-            <b-field expanded v-if="canStart || canSchedule">
-              <b-button expanded @click="estimateCampaign" :loading="loading.campaigns" type="is-primary"
-                        icon-left="email-outline" data-cy="btn-estimate">
-                {{ $t('campaigns.estimate') }}
-              </b-button>
-            </b-field>
-            <b-field expanded v-if="canStart || canSchedule">
-              <b-button expanded @click="generateCampaignSends" :loading="loading.campaigns" type="is-primary"
-                        icon-left="format-list-bulleted-square" data-cy="btn-estimate">
-                {{ $t('campaigns.generateCampaignSends') }}
               </b-button>
             </b-field>
           </b-field>
@@ -588,7 +588,9 @@ export default Vue.extend({
     // Estimate campaign subscribers.
     estimateCampaign() {
       if (this.canStart || this.canSchedule) {
-        this.$api.estimateCampaign(this.data.id).then((data) => {
+        const listIds = this.form.lists.map((l) => l.id).join(',');
+        const segmentIds = this.form.segments.map((s) => s.id).join(',');
+        this.$api.estimateCampaign(this.data.id, listIds, segmentIds).then((data) => {
           this.$utils.confirm(this.$t('campaigns.messages.subscriber.count', { total: data.total }));
         });
       }
